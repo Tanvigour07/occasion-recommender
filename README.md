@@ -5,7 +5,7 @@ Enter an occasion (Birthday, Diwali, Wedding, Valentine's Day, Office Party, ...
 ## Setup
 ```bash
 pip install -r requirements.txt
-uvicorn main:app --reload
+python -m uvicorn main:app
 # open http://127.0.0.1:8000
 ```
 Catalog lives in `data/products.json`.
