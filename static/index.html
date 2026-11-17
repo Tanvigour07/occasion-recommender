@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gift Finder</title>
+<style>
+  :root { --bg:#faf7f2; --ink:#2a2420; --muted:#7a6f66; --accent:#b4532a; --card:#fff; --line:#eadfd2; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Georgia, "Times New Roman", serif; background:var(--bg); color:var(--ink); }
+  header { padding:48px 20px 24px; text-align:center; }
+  h1 { font-size:2.2rem; margin:0 0 6px; letter-spacing:.5px; }
+  header p { color:var(--muted); margin:0; font-family: system-ui, sans-serif; }
+  form { display:flex; gap:8px; max-width:620px; margin:24px auto 0; padding:0 16px; font-family: system-ui, sans-serif; }
+  label { position:absolute; left:-9999px; }
+  input { flex:1; padding:14px 16px; font-size:1.05rem; border:2px solid var(--line); border-radius:10px; background:#fff; }
+  input:focus { outline:none; border-color:var(--accent); }
+  button { padding:14px 22px; font-size:1rem; border:0; border-radius:10px; background:var(--accent); color:#fff; cursor:pointer; }
+  button:hover { filter:brightness(1.08); }
+  .chips { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; max-width:720px; margin:16px auto 0; padding:0 16px; font-family:system-ui,sans-serif; }
+  .chip { border:1px solid var(--line); background:#fff; color:var(--ink); padding:6px 14px; border-radius:999px; font-size:.9rem; }
+  main { max-width:1100px; margin:28px auto 60px; padding:0 16px; }
+  #status { text-align:center; color:var(--muted); font-family:system-ui,sans-serif; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; }
+  .card img { width:100%; aspect-ratio:4/3; object-fit:cover; background:#efe7dc; }
+  .noimg { aspect-ratio:4/3; background:linear-gradient(135deg,#f3e6d6,#e8d3bd); display:flex; flex-direction:column; gap:4px; align-items:center; justify-content:center; color:var(--muted); font:.8rem system-ui,sans-serif; }
+  .noimg .ico { font-size:2.6rem; }
+  .body { padding:14px 16px 16px; display:flex; flex-direction:column; gap:6px; }
+  .cat { font:600 .72rem system-ui,sans-serif; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); }
+  .card h3 { margin:0; font-size:1.1rem; }
+  .desc { margin:0; color:var(--muted); font:.9rem/1.45 system-ui,sans-serif; }
+  .meta { display:flex; justify-content:space-between; align-items:center; font:.85rem system-ui,sans-serif; margin-top:4px; }
+  .why { font:.78rem system-ui,sans-serif; color:var(--muted); }
+  .empty { text-align:center; padding:50px 10px; color:var(--muted); font-family:system-ui,sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Gift Finder</h1>
+  <p>Tell us the occasion — we'll find the right products.</p>
+  <form id="f">
+    <label for="occ">Occasion</label>
+    <input id="occ" placeholder="Occasion — e.g. Birthday, Diwali, Wedding, Office Party" autocomplete="off" autofocus>
+    <button type="submit">Find gifts</button>
+  </form>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <div id="status"></div>
+  <div id="results" class="grid"></div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ICONS = {"Flowers":"💐","Chocolates & Food":"🍫","Fragrance & Candles":"🕯️","Jewellery":"💍","Watches & Pens":"⌚","Apparel":"👕","Toys & Kids":"🧸","Gift Cards & Accessories":"🎁","Hampers & Celebrations":"🎉","Wellness & Eco":"🌿","Personalized & Couples":"💝"};
+const ph = c => { const d = document.createElement("div"); d.className = "noimg"; d.innerHTML = `<span class="ico">${ICONS[c] || "🎁"}</span><span>Image unavailable</span>`; return d; };
+const snippet = (t, n=130) => t.length > n ? t.slice(0, n).trimEnd() + "…" : t;
+
+async function search(q) {
+  q = q.trim();
+  if (!q) { $("status").textContent = ""; $("results").innerHTML = ""; return; }
+  $("status").textContent = "Searching…";
+  const r = await fetch("/api/recommend?occasion=" + encodeURIComponent(q));
+  const data = await r.json();
+  const box = $("results");
+  if (!data.results.length) {
+    $("status").textContent = "";
+    box.innerHTML = `<div class="empty" style="grid-column:1/-1">No products match “${esc(q)}”. Try Birthday, Wedding, Diwali, Valentine's Day or Office Party.</div>`;
+    return;
+  }
+  $("status").textContent = `${data.results.length} recommendations for “${q}”`;
+  box.innerHTML = data.results.map(p => `
+    <article class="card">
+      ${p.image ? `<img referrerpolicy="no-referrer" loading="lazy" src="${esc(p.image)}" alt="${esc(p.title)}" data-c="${esc(p.category)}" onerror="this.replaceWith(ph(this.dataset.c))">` : `<div class="noimg"><span class="ico">${ICONS[p.category] || "🎁"}</span><span>Image unavailable</span></div>`}
+      <div class="body">
+        <span class="cat">${esc(p.category)}</span>
+        <h3>${esc(p.title)}</h3>
+        <p class="desc">${esc(snippet(p.description))}</p>
+        <div class="meta"><strong>₹${esc(p.price)}</strong><span>${Math.round(p.score*100)}% match</span></div>
+        ${p.matched_terms.length ? `<div class="why">Matched: ${p.matched_terms.map(esc).join(", ")}</div>` : ""}
+      </div>
+    </article>`).join("");
+}
+
+$("f").addEventListener("submit", e => { e.preventDefault(); search($("occ").value); });
+fetch("/api/occasions").then(r => r.json()).then(list => {
+  $("chips").innerHTML = list.map(o => `<button type="button" class="chip">${esc(o)}</button>`).join("");
+  $("chips").onclick = e => { if (e.target.classList.contains("chip")) { $("occ").value = e.target.textContent; search(e.target.textContent); } };
+});
+</script>
+</body>
+</html>
