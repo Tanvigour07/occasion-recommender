@@ -19,11 +19,9 @@ If `sentence-transformers` + `faiss-cpu` are installed, the engine adds a **sema
 
 1. **Normalisation** - accepts both the assignment's payload fields (`product_id`, `title`, `files`, ...) and the catalog's fields (`id`, `name`, `mainImage`, ...). Only ACTIVE, approved, non-deleted products are indexed (104 of 110).
 2. **Occasion expansion** - `occasions.py` maps each occasion (plus aliases like "bday", "Valentine's", "Deepavali") to the vocabulary people associate with it. Unknown occasions fall back to the user's own words.
-3. **Scoring** = 0.55 x TF-IDF cosine (uni+bigrams, title double-weighted) + 0.35 x keyword score (title hits > description hits) + a boost when the occasion is named directly in the product. Products themed for a *different* occasion (e.g. a Holi hamper for "Diwali") are down-weighted. Unknown occasions with no lexical overlap return nothing, which triggers the UI's empty state.
+3. **Scoring** = 0.55 x TF-IDF cosine (uni+bigrams, title double-weighted) + 0.35 x keyword score (title hits > description hits) + a boost when the occasion is named directly in the product. Products themed for a *different* occasion (e.g. a Holi hamper for "Diwali") are down-weighted. Unknown occasions with no lexical overlap return nothing, which triggers the UI's empty state. With the semantic layer on, the weights are 0.45 x embedding similarity + 0.25 x TF-IDF + 0.25 x keyword score (+ the direct-mention boost).
 4. **Category** - the catalog only has opaque category IDs, so a human-readable label is inferred from title/description with whole-word rules.
-
-Why this approach: the catalog is small (~100 items), so TF-IDF is fast, explainable (the UI shows matched terms) and needs no GPU or API key. The natural upgrade is sentence-transformer embeddings with FAISS/Qdrant in place of TF-IDF, behind the same `Recommender.recommend` interface.
-
+Why this approach: the catalog is small (~100 items) and some products name the occasion directly (e.g. "Diwali Luxury Gift Hampers"), so keyword and TF-IDF signals are strong and explainable (the UI shows matched terms). Semantic embeddings add coverage for occasions that are not named in the product text (e.g. "Anniversary" surfacing roses and couple gifts). Combining both gives better results than either alone, and the lexical pipeline keeps the app working without the model.
 ## Libraries
 FastAPI, Uvicorn, scikit-learn, NumPy.
 
